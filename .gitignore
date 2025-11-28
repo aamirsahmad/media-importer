@@ -1,0 +1,62 @@
+# Git ignore file for media-importer
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Test photos (if you add any)
+test_photos/
+sample_photos/
+
+# Make build artifacts (if any)
+*.o
+*.a
+
+# Linting and type checking
+.mypy_cache/
+.pylint.d/
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+

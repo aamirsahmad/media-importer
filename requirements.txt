@@ -1,0 +1,12 @@
+# Photo Import Tool Dependencies
+# Install with: pip install -r requirements.txt
+
+# For reading EXIF data from photos
+exifread>=3.0.0
+
+# For progress bar display
+tqdm>=4.65.0
+
+# For colored terminal output
+colorama>=0.4.6
+
