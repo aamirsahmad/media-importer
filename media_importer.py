@@ -8,10 +8,14 @@ Works on macOS and Linux.
 import sys
 
 if sys.version_info < (3, 14):
-    print(f"Error: Python 3.14 or higher is required.")
-    print(f"You are using Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    print("Error: Python 3.14 or higher is required.")
+    print(
+        f"You are using Python "
+        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
     sys.exit(1)
 
+# pylint: disable=wrong-import-position
 import argparse
 import hashlib
 import logging
@@ -20,6 +24,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+# pylint: enable=wrong-import-position
 
 try:
     import exifread
