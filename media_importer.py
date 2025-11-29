@@ -5,12 +5,18 @@ Automatically organizes photos and videos by date (YEAR/MONTH/DAY/pictures|video
 Works on macOS and Linux.
 """
 
+import sys
+
+if sys.version_info < (3, 14):
+    print(f"Error: Python 3.14 or higher is required.")
+    print(f"You are using Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    sys.exit(1)
+
 import argparse
 import hashlib
 import logging
 import os
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
