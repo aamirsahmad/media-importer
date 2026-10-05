@@ -16,6 +16,7 @@ make run DEST=~/Pictures/Camera
 ## Features
 
 - Auto-detects SD card (photos from DCIM, videos from PRIVATE/M4ROOT/CLIP)
+- On Linux, if no mounted card is found, lists unmounted removable partitions and offers to mount one (via `udisksctl`, no root needed)
 - Organizes by date: `YEAR/MONTH/DAY/pictures/` and `YEAR/MONTH/DAY/videos/`
 - Duplicate detection via MD5 hash
 - Progress bar

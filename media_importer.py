@@ -18,9 +18,11 @@ if sys.version_info < (3, 14):
 # pylint: disable=wrong-import-position
 import argparse
 import hashlib
+import json
 import logging
 import os
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -53,6 +55,103 @@ except ImportError:
 
     class Style:  # pylint: disable=too-few-public-methods
         RESET_ALL = BRIGHT = ""
+
+
+def list_unmounted_removable_partitions() -> List[dict]:
+    """
+    List hotplug partitions (SD cards, USB sticks) that have a filesystem but are not mounted.
+    Linux only (uses lsblk). Returns a list of dicts with name/size/fstype/label.
+    """
+    if not sys.platform.startswith("linux"):
+        return []
+    try:
+        result = subprocess.run(
+            ["lsblk", "-J", "-p", "-o", "NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT,RM,HOTPLUG"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        devices = json.loads(result.stdout).get("blockdevices", [])
+    except OSError, subprocess.CalledProcessError, json.JSONDecodeError:
+        return []
+
+    def walk(nodes, parent_removable=False):
+        for node in nodes:
+            # Use HOTPLUG rather than RM: some permanently attached USB devices
+            # (e.g. tiny firmware disks inside peripherals) report RM=1 but HOTPLUG=0.
+            removable = bool(node.get("hotplug")) or parent_removable
+            children = node.get("children") or []
+            # Only consider leaf nodes that carry a filesystem
+            if not children and removable and node.get("fstype") and not node.get("mountpoint"):
+                yield node
+            yield from walk(children, removable)
+
+    return list(walk(devices))
+
+
+def mount_partition(device: str) -> Optional[Path]:
+    """Mount a block device via udisksctl (no root needed). Returns the mount point."""
+    try:
+        result = subprocess.run(
+            ["udisksctl", "mount", "-b", device],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        print(f"{Fore.RED}Error: udisksctl not found. Mount manually, e.g.:{Style.RESET_ALL}")
+        print(f"  {Fore.CYAN}sudo mount {device} /mnt{Style.RESET_ALL}")
+        return None
+
+    if result.returncode != 0:
+        print(f"{Fore.RED}Error mounting {device}: {result.stderr.strip()}{Style.RESET_ALL}")
+        return None
+
+    # udisksctl prints: "Mounted /dev/sdc1 at /run/media/user/LABEL"
+    output = result.stdout.strip()
+    print(f"{Fore.GREEN}{output}{Style.RESET_ALL}")
+    if " at " in output:
+        return Path(output.split(" at ", 1)[1].rstrip("."))
+    return None
+
+
+def prompt_and_mount_sd_card() -> bool:
+    """
+    Show unmounted removable partitions and let the user pick one to mount.
+    Returns True if a partition was mounted.
+    """
+    partitions = list_unmounted_removable_partitions()
+    if not partitions:
+        return False
+
+    print(
+        f"\n{Fore.YELLOW}No mounted SD card found, but unmounted removable "
+        f"partition(s) detected:{Style.RESET_ALL}"
+    )
+    for idx, part in enumerate(partitions, 1):
+        label = part.get("label") or "(no label)"
+        print(
+            f"  {Fore.CYAN}[{idx}]{Style.RESET_ALL} {part['name']}  "
+            f"{part['size']}  {part['fstype']}  {label}"
+        )
+    print(f"  {Fore.CYAN}[q]{Style.RESET_ALL} quit")
+
+    if not sys.stdin.isatty():
+        print("Non-interactive session; not prompting to mount.")
+        return False
+
+    while True:
+        try:
+            choice = input("Select a partition to mount: ").strip().lower()
+        except EOFError, KeyboardInterrupt:
+            print()
+            return False
+        if choice in ("q", ""):
+            return False
+        if choice.isdigit() and 1 <= int(choice) <= len(partitions):
+            device = partitions[int(choice) - 1]["name"]
+            return mount_partition(device) is not None
+        print(f"{Fore.RED}Invalid choice.{Style.RESET_ALL}")
 
 
 class MediaImporter:
@@ -508,6 +607,8 @@ Examples:
     else:
         importer = MediaImporter(Path("."), args.destination, args.dry_run)
         source, video_source = importer.find_sd_card_paths()
+        if not source and prompt_and_mount_sd_card():
+            source, video_source = importer.find_sd_card_paths()
         if not source:
             print(f"{Fore.RED}Error: Could not find SD card DCIM folder.{Style.RESET_ALL}")
             print("Please specify source manually with --source")
